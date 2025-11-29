@@ -166,7 +166,7 @@ git commit -m "Initial commit: ETA Guesser game with traffic/transit overlays"
 
 ```bash
 # Create new repo on GitHub, then:
-git remote add origin https://github.com/YOUR_USERNAME/etaGuessr.git
+git remote add origin https://github.com/jasonliu-json/etaGuessr.git
 git branch -M main
 git push -u origin main
 ```
