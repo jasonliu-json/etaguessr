@@ -22,12 +22,34 @@
 
         #info {
             width: 350px;
+            min-width: 250px;
+            max-width: 600px;
             background: white;
             padding: 20px;
             overflow-y: auto;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+
+        #resize-handle {
+            width: 5px;
+            background: transparent;
+            cursor: col-resize;
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 1000;
+        }
+
+        #resize-handle:hover {
+            background: #1a73e8;
+        }
+
+        #resize-handle:active {
+            background: #1557b0;
         }
 
         #map {
@@ -236,6 +258,7 @@
 </head>
 <body>
     <div id="info">
+        <div id="resize-handle"></div>
         <h2>ETA Guesser - Toronto</h2>
         <button id="randomBtn" onclick="getRandomDestination()">New Game</button>
         <button id="newGameBtn" onclick="startNewGame()">New Game</button>
@@ -288,6 +311,44 @@
 
         // Toronto Union Station coordinates
         const UNION_STATION = { lat: 43.6452, lng: -79.3806 };
+
+        // Panel resize functionality
+        (function() {
+            const resizeHandle = document.getElementById('resize-handle');
+            const infoPanel = document.getElementById('info');
+            let isResizing = false;
+
+            resizeHandle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+
+                const newWidth = e.clientX;
+                const minWidth = 250;
+                const maxWidth = 600;
+
+                if (newWidth >= minWidth && newWidth <= maxWidth) {
+                    infoPanel.style.width = newWidth + 'px';
+                    // Trigger map resize
+                    if (map && google.maps.event) {
+                        google.maps.event.trigger(map, 'resize');
+                    }
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        })();
 
         function calculateBearing(lat1, lng1, lat2, lng2) {
             // Calculate bearing/direction from point 1 to point 2
