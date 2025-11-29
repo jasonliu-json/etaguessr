@@ -455,7 +455,7 @@
 
             try {
                 // Call backend (deployed on Heroku)
-                const response = await fetch('https://toronto-etaguessr-api.herokuapp.com/random-destination');
+                const response = await fetch('https://toronto-etaguessr-api-cdf6cdc7db27.herokuapp.com');
                 const data = await response.json();
 
                 if (data.error) {
