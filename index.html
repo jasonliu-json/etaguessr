@@ -263,7 +263,7 @@
         </div>
 
         <div id="instructions">
-            Click "New Game" to select a random location within 10km of Union Station and see ETAs. Ferry routes are excluded.
+            Good luck!
         </div>
     </div>
 
@@ -653,8 +653,10 @@
     <script>
         (async function() {
             try {
-                // Ask the backend for the API key; backend reads GOOGLE_MAPS_API_KEY from env
-                const response = await fetch('/maps-api-key');
+                // Backend URL that serves the API key (same Heroku app as the game API)
+                const mapsKeyEndpoint = 'https://toronto-etaguessr-api-cdf6cdc7db27.herokuapp.com/maps-api-key';
+
+                const response = await fetch(mapsKeyEndpoint);
                 if (!response.ok) {
                     throw new Error('Failed to fetch Maps API key');
                 }
