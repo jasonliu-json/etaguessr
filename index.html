@@ -316,8 +316,10 @@
             // ~5km = ~3000 points
             // ~10km = ~1500 points
             // ~25km = ~100 points
+
+            
             const maxScore = 5000;
-            const decayFactor = 0.25; // Controls how quickly score drops
+            const decayFactor = 0.25; 
             const score = Math.round(maxScore * Math.exp(-decayFactor * Math.max(0, distanceKm-0.05)));
             return Math.max(0, Math.min(maxScore, score));
         }

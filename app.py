@@ -75,11 +75,11 @@ def is_on_water(destination):
         # Check if the first result indicates water/natural feature
         first_result = result[0]
         types = first_result.get('types', [])
+        address_components = first_result.get('address_components', [])
 
         # If result is "natural_feature" or "park" without street address, likely water
         if 'natural_feature' in types:
             # Check if there's a street address component
-            address_components = first_result.get('address_components', [])
             has_street = any('route' in comp.get('types', []) for comp in address_components)
             if not has_street:
                 return True
