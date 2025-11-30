@@ -409,6 +409,14 @@
 
         // Initialize city from URL path
         function initializeCityFromURL() {
+            // Check for GitHub Pages 404 redirect
+            const redirect = sessionStorage.getItem('redirect');
+            if (redirect) {
+                sessionStorage.removeItem('redirect');
+                // Restore the path without reloading
+                window.history.replaceState(null, '', redirect);
+            }
+
             const path = window.location.pathname;
             const cityFromPath = pathToCityMap[path];
 

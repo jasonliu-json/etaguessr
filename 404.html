@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ETA Guesser</title>
+    <script>
+        // GitHub Pages SPA redirect solution
+        // This captures the path and redirects to index.html, preserving the route
+        sessionStorage.setItem('redirect', location.pathname);
+        location.replace(location.origin + location.pathname.split('/').slice(0, 2).join('/') + '/');
+    </script>
+</head>
+<body>
+    Redirecting...
+</body>
+</html>
