@@ -468,15 +468,36 @@ def maps_api_key():
 
 
 @app.route('/', methods=['GET'])
+@app.route('/toronto', methods=['GET'])
+@app.route('/san-francisco', methods=['GET'])
+@app.route('/sf', methods=['GET'])
 def index():
-    return jsonify({
-        'message': 'ETA Guesser API',
-        'endpoints': {
-            '/random-destination': 'Get random destination and ETAs (supports ?city=toronto or ?city=san-francisco)',
-            '/cities': 'Get list of available cities',
-            '/maps-api-key': 'Get Google Maps API key for frontend'
-        }
-    })
+    """
+    Serve the main HTML page for all city routes.
+    Routes:
+    - / (defaults to Toronto)
+    - /toronto
+    - /san-francisco
+    - /sf (alias for San Francisco)
+    """
+    from flask import send_file
+    import os
+
+    # Check if index.html exists in the current directory
+    index_path = os.path.join(os.path.dirname(__file__), 'index.html')
+
+    if os.path.exists(index_path):
+        return send_file(index_path)
+    else:
+        # Fallback to API response if index.html not found
+        return jsonify({
+            'message': 'ETA Guesser API',
+            'endpoints': {
+                '/random-destination': 'Get random destination and ETAs (supports ?city=toronto or ?city=san-francisco)',
+                '/cities': 'Get list of available cities',
+                '/maps-api-key': 'Get Google Maps API key for frontend'
+            }
+        })
 
 
 if __name__ == '__main__':

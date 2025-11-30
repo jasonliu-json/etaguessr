@@ -383,6 +383,28 @@
             }
         };
 
+        // URL path to city mapping
+        const pathToCityMap = {
+            '/san-francisco': 'san-francisco',
+            '/sf': 'san-francisco',
+            '/toronto': 'toronto',
+            '/': 'toronto'
+        };
+
+        // Initialize city from URL path
+        function initializeCityFromURL() {
+            const path = window.location.pathname;
+            const cityFromPath = pathToCityMap[path];
+
+            if (cityFromPath && cityConfigs[cityFromPath]) {
+                selectedCity = cityFromPath;
+                const citySelect = document.getElementById('city-select');
+                if (citySelect) {
+                    citySelect.value = selectedCity;
+                }
+            }
+        }
+
         // Get current city config
         function getCurrentCityConfig() {
             return cityConfigs[selectedCity];
@@ -392,6 +414,10 @@
         function onCityChange() {
             const citySelect = document.getElementById('city-select');
             selectedCity = citySelect.value;
+
+            // Update URL without reloading page
+            const newPath = selectedCity === 'toronto' ? '/' : `/${selectedCity}`;
+            window.history.pushState({city: selectedCity}, '', newPath);
 
             // Update title
             const cityConfig = getCurrentCityConfig();
@@ -408,6 +434,31 @@
                 getRandomDestination();
             }
         }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            initializeCityFromURL();
+
+            // Update dropdown
+            const citySelect = document.getElementById('city-select');
+            if (citySelect) {
+                citySelect.value = selectedCity;
+            }
+
+            // Update title and map
+            const cityConfig = getCurrentCityConfig();
+            document.getElementById('game-title').textContent = `ETA Guesser - ${cityConfig.name}`;
+
+            if (map) {
+                map.setCenter(cityConfig.center);
+                map.setZoom(cityConfig.zoom);
+            }
+
+            // Reset game if one is active
+            if (gameActive) {
+                getRandomDestination();
+            }
+        });
 
         // For backwards compatibility
         const UNION_STATION = { lat: 43.6452, lng: -79.3806 };
@@ -516,6 +567,9 @@
         }
 
         function initMap() {
+            // Initialize city from URL first
+            initializeCityFromURL();
+
             // Get current city config
             const cityConfig = getCurrentCityConfig();
 
@@ -824,7 +878,6 @@
             const resultContent = document.getElementById('result-content');
 
             resultContent.innerHTML = `
-                <div class="result-row"><span class="result-label">Origin:</span> ${actualOrigin.address}</div>
                 <div class="result-row"><span class="result-label">Your Score:</span> ${score} / 5000</div>
                 <div class="result-row"><span class="result-label">Distance Off:</span> ${distanceKm.toFixed(2)} km (${distanceMiles.toFixed(2)} miles)</div>
                 <div class="result-row"><span class="result-label">Actual Destination:</span> ${actualDestination.address}</div>
