@@ -445,15 +445,6 @@
             transitLayer = new google.maps.TransitLayer();
             transitLayer.setMap(map);
 
-            // Add marker for Union Station
-            unionStationMarker = new google.maps.Marker({
-                position: UNION_STATION,
-                map: map,
-                title: 'Union Station',
-                label: 'A',
-                animation: google.maps.Animation.DROP
-            });
-
             // Auto-pick destination on load
             getRandomDestination();
         }
