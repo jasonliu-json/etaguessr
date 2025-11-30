@@ -390,19 +390,19 @@
             '/toronto': 'toronto',
             '/': 'toronto',
             // GitHub Pages paths (with repo name)
-            '/toronto-etaguessr/': 'toronto',
-            '/toronto-etaguessr': 'toronto',
-            '/toronto-etaguessr/toronto': 'toronto',
-            '/toronto-etaguessr/san-francisco': 'san-francisco',
-            '/toronto-etaguessr/sf': 'san-francisco'
+            '/etaguessr/': 'toronto',
+            '/etaguessr': 'toronto',
+            '/etaguessr/toronto': 'toronto',
+            '/etaguessr/san-francisco': 'san-francisco',
+            '/etaguessr/sf': 'san-francisco'
         };
 
         // Get base path (for GitHub Pages compatibility)
         function getBasePath() {
             const path = window.location.pathname;
             // Check if we're on GitHub Pages (path includes repo name)
-            if (path.startsWith('/toronto-etaguessr')) {
-                return '/toronto-etaguessr';
+            if (path.startsWith('/etaguessr')) {
+                return '/etaguessr';
             }
             return '';
         }
