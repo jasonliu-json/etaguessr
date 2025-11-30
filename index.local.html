@@ -388,8 +388,24 @@
             '/san-francisco': 'san-francisco',
             '/sf': 'san-francisco',
             '/toronto': 'toronto',
-            '/': 'toronto'
+            '/': 'toronto',
+            // GitHub Pages paths (with repo name)
+            '/toronto-etaguessr/': 'toronto',
+            '/toronto-etaguessr': 'toronto',
+            '/toronto-etaguessr/toronto': 'toronto',
+            '/toronto-etaguessr/san-francisco': 'san-francisco',
+            '/toronto-etaguessr/sf': 'san-francisco'
         };
+
+        // Get base path (for GitHub Pages compatibility)
+        function getBasePath() {
+            const path = window.location.pathname;
+            // Check if we're on GitHub Pages (path includes repo name)
+            if (path.startsWith('/toronto-etaguessr')) {
+                return '/toronto-etaguessr';
+            }
+            return '';
+        }
 
         // Initialize city from URL path
         function initializeCityFromURL() {
@@ -416,7 +432,10 @@
             selectedCity = citySelect.value;
 
             // Update URL without reloading page
-            const newPath = selectedCity === 'toronto' ? '/' : `/${selectedCity}`;
+            const basePath = getBasePath();
+            const newPath = selectedCity === 'toronto'
+                ? (basePath || '/')
+                : `${basePath}/${selectedCity}`;
             window.history.pushState({city: selectedCity}, '', newPath);
 
             // Update title
