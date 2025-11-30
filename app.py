@@ -215,15 +215,33 @@ def get_address(lat, lng):
 @app.route('/random-destination', methods=['GET'])
 def random_destination():
     """
-    Pick a random destination within 10 km of Union Station
+    Pick random origin and destination within 10 km of Union Station
     and return ETAs for all travel modes.
-    Only returns destinations accessible by all four transport modes.
-    Excludes destinations that require ferry rides.
+    Only returns locations accessible by all four transport modes.
+    Excludes routes that require ferry rides.
+    Ensures walking time between origin and destination is at least 30 minutes.
     """
-    max_attempts = 20  # Try up to 20 times to find a valid destination
+    max_attempts = 30  # Try up to 30 times to find valid origin/destination pair
 
     for attempt in range(max_attempts):
         try:
+            # Generate random origin
+            origin_lat, origin_lng = generate_random_point_in_radius(
+                UNION_STATION['lat'],
+                UNION_STATION['lng'],
+                MAX_RADIUS_METERS
+            )
+
+            origin = {
+                'lat': origin_lat,
+                'lng': origin_lng
+            }
+
+            # Check if origin is on water - skip if it is
+            if is_on_water(origin):
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin is on water")
+                continue
+
             # Generate random destination
             dest_lat, dest_lng = generate_random_point_in_radius(
                 UNION_STATION['lat'],
@@ -236,18 +254,18 @@ def random_destination():
                 'lng': dest_lng
             }
 
-            # Check if point is on water - skip if it is
+            # Check if destination is on water - skip if it is
             if is_on_water(destination):
-                print(f"✗ Attempt {attempt + 1}: Skipping - point is on water")
+                print(f"✗ Attempt {attempt + 1}: Skipping - destination is on water")
                 continue
 
             # Check if route requires ferry - skip if it does
-            if has_ferry_in_route(UNION_STATION, destination):
+            if has_ferry_in_route(origin, destination):
                 print(f"✗ Attempt {attempt + 1}: Skipping - requires ferry")
                 continue
 
             # Get ETAs for all modes
-            etas = get_etas(UNION_STATION, destination)
+            etas = get_etas(origin, destination)
 
             # Check if all four modes are available (no errors)
             required_modes = ['driving', 'transit', 'bicycling', 'walking']
@@ -256,30 +274,48 @@ def random_destination():
                 for mode in required_modes
             )
 
-            if all_modes_available:
-                # Get human-readable address
-                destination_address = get_address(dest_lat, dest_lng)
-
-                print(f"✓ Found valid destination on attempt {attempt + 1}")
-                return jsonify({
-                    'origin': UNION_STATION,
-                    'destination': destination,
-                    'destination_address': destination_address,
-                    'etas': etas
-                })
-            else:
-                # Skip this destination, try another
+            if not all_modes_available:
                 missing_modes = [m for m in required_modes if m not in etas or 'error' in etas[m]]
                 print(f"✗ Attempt {attempt + 1}: Skipping - missing modes: {missing_modes}")
                 continue
+
+            # Check walking time is at least 30 minutes
+            walking_duration_text = etas['walking'].get('duration', '')
+            # Extract minutes from duration text (e.g., "32 mins" or "1 hour 5 mins")
+            walking_minutes = 0
+            if 'hour' in walking_duration_text:
+                hours = int(walking_duration_text.split()[0])
+                walking_minutes += hours * 60
+                if 'min' in walking_duration_text:
+                    mins = int(walking_duration_text.split()[-2])
+                    walking_minutes += mins
+            elif 'min' in walking_duration_text:
+                walking_minutes = int(walking_duration_text.split()[0])
+
+            if walking_minutes < 30:
+                print(f"✗ Attempt {attempt + 1}: Skipping - walking time only {walking_minutes} mins (need 30+)")
+                continue
+
+            # Get human-readable addresses
+            origin_address = get_address(origin_lat, origin_lng)
+            destination_address = get_address(dest_lat, dest_lng)
+
+            print(f"✓ Found valid origin/destination pair on attempt {attempt + 1} (walking: {walking_minutes} mins)")
+            return jsonify({
+                'origin': origin,
+                'origin_address': origin_address,
+                'destination': destination,
+                'destination_address': destination_address,
+                'etas': etas
+            })
 
         except Exception as e:
             print(f"✗ Attempt {attempt + 1}: Error - {str(e)}")
             continue
 
-    # If we couldn't find a valid destination after max_attempts
+    # If we couldn't find a valid origin/destination pair after max_attempts
     return jsonify({
-        'error': f'Could not find a destination with all transport modes after {max_attempts} attempts'
+        'error': f'Could not find origin/destination pair with all transport modes and 30+ min walk after {max_attempts} attempts'
     }), 500
 
 

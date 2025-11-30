@@ -264,8 +264,8 @@
         <button id="newGameBtn" onclick="startNewGame()">New Game</button>
 
         <div id="coordinates">
-            <div class="coord-row"><span class="label">Origin:</span> <span>Union Station, Toronto</span></div>
-            <div class="coord-row"><span class="label">Destination:</span> <span id="destination">Click button to pick random destination</span></div>
+            <div class="coord-row"><span class="label">Origin:</span> <span id="origin">???</span></div>
+            <div class="coord-row"><span class="label">Destination:</span> <span id="destination">???</span></div>
         </div>
 
         <div id="compass-indicator">
@@ -301,8 +301,9 @@
         let map;
         let destinationMarker;
         let guessMarker;
-        let unionStationMarker;
+        let originMarker;
         let distanceLine = null;
+        let actualOrigin = null;
         let actualDestination = null;
         let gameActive = false;
         let mapClickListener = null;
@@ -410,7 +411,7 @@
             // Create map centered on Toronto
             map = new google.maps.Map(document.getElementById('map'), {
                 center: UNION_STATION,
-                zoom: 12,
+                zoom: 14,
                 mapTypeControl: true,
                 streetViewControl: true,
                 fullscreenControl: true
@@ -491,7 +492,12 @@
 
             // Reset game state and clear all old markers/lines
             gameActive = false;
+            actualOrigin = null;
             actualDestination = null;
+            if (originMarker) {
+                originMarker.setMap(null);
+                originMarker = null;
+            }
             if (destinationMarker) {
                 destinationMarker.setMap(null);
                 destinationMarker = null;
@@ -512,6 +518,8 @@
             // Disable button and show loading
             button.disabled = true;
             button.textContent = 'Loading...';
+            const originText = document.getElementById('origin');
+            originText.textContent = 'Picking random origin...';
             destinationText.textContent = 'Picking random destination...';
             etaContent.innerHTML = '<div class="loading">Calculating ETAs...</div>';
             etaSection.style.display = 'block';
@@ -525,7 +533,13 @@
                     throw new Error(data.error);
                 }
 
-                // Store destination (don't show it yet!)
+                // Store origin and destination
+                actualOrigin = {
+                    lat: data.origin.lat,
+                    lng: data.origin.lng,
+                    address: data.origin_address
+                };
+
                 actualDestination = {
                     lat: data.destination.lat,
                     lng: data.destination.lng,
@@ -533,7 +547,17 @@
                     etas: data.etas
                 };
 
-                // Update destination display to hide address
+                // Create origin marker
+                originMarker = new google.maps.Marker({
+                    position: actualOrigin,
+                    map: map,
+                    title: 'Origin',
+                    label: 'A',
+                    animation: google.maps.Animation.DROP
+                });
+
+                // Update origin and destination display
+                originText.textContent = '??? (Keep hidden until submit!)';
                 destinationText.textContent = '??? (Click on map to guess!)';
 
                 // Display ETAs
@@ -548,9 +572,9 @@
                 instructionsDiv.style.background = '#fff3cd';
                 instructionsDiv.style.color = '#856404';
 
-                // Reset map view to Union Station
-                map.setCenter(UNION_STATION);
-                map.setZoom(11);
+                // Reset map view to origin
+                map.setCenter(actualOrigin);
+                map.setZoom(14);
 
             } catch (error) {
                 console.error('Error:', error);
@@ -578,7 +602,7 @@
 
             // Calculate bearing to destination and show compass
             const bearing = calculateBearing(
-                UNION_STATION.lat, UNION_STATION.lng,
+                actualOrigin.lat, actualOrigin.lng,
                 actualDestination.lat, actualDestination.lng
             );
             compassArrow.innerHTML = getCompassArrow(bearing);
@@ -676,12 +700,13 @@
 
             // Fit map to show all markers
             const bounds = new google.maps.LatLngBounds();
-            bounds.extend(UNION_STATION);
+            bounds.extend(actualOrigin);
             bounds.extend(guessPos);
             bounds.extend(destLocation);
             map.fitBounds(bounds);
 
-            // Update destination text
+            // Update origin and destination text
+            document.getElementById('origin').textContent = actualOrigin.address;
             document.getElementById('destination').textContent = actualDestination.address;
 
             // Show results
@@ -689,10 +714,12 @@
             const resultContent = document.getElementById('result-content');
 
             resultContent.innerHTML = `
+                <div class="result-row"><span class="result-label">Origin:</span> ${actualOrigin.address}</div>
                 <div class="result-row"><span class="result-label">Your Score:</span> ${score} / 5000</div>
                 <div class="result-row"><span class="result-label">Distance Off:</span> ${distanceKm.toFixed(2)} km (${distanceMiles.toFixed(2)} miles)</div>
-                <div class="result-row"><span class="result-label">Actual Location:</span> ${actualDestination.address}</div>
+                <div class="result-row"><span class="result-label">Actual Destination:</span> ${actualDestination.address}</div>
                 <div class="result-row" style="margin-top: 10px;">
+                    <span style="color: #1a73e8;">📍 A</span> = Origin &nbsp;&nbsp;
                     <span style="color: #FFA500;">⬤ G</span> = Your Guess &nbsp;&nbsp;
                     <span style="color: #1a73e8;">📍 B</span> = Actual Destination
                 </div>
