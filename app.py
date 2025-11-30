@@ -25,15 +25,31 @@ if not API_KEY:
 # Shared Google Maps client, used for backend ETA / geocoding calls
 gmaps = googlemaps.Client(key=API_KEY)
 
-# Toronto Union Station coordinates
-UNION_STATION = {
-    'lat': 43.6452,
-    'lng': -79.3806
+# City configurations
+CITIES = {
+    'toronto': {
+        'name': 'Toronto',
+        'center': {'lat': 43.6452, 'lng': -79.3806},  # Union Station
+        'center_name': 'Union Station',
+        'radius_km': 10,
+        'radius_meters': 10000
+    },
+    'san-francisco': {
+        'name': 'San Francisco',
+        'center': {'lat': 37.7749, 'lng': -122.4194},  # Downtown SF
+        'center_name': 'Downtown',
+        'radius_km': 10,
+        'radius_meters': 10000
+    }
 }
 
-# 25 km in meters (for distance calculations)
-MAX_RADIUS_KM = 10
-MAX_RADIUS_METERS = MAX_RADIUS_KM * 1000
+# Default city
+DEFAULT_CITY = 'toronto'
+
+# Backwards compatibility - Toronto Union Station coordinates
+UNION_STATION = CITIES['toronto']['center']
+MAX_RADIUS_KM = CITIES['toronto']['radius_km']
+MAX_RADIUS_METERS = CITIES['toronto']['radius_meters']
 
 
 def generate_random_point_in_radius(center_lat, center_lng, radius_meters):
@@ -88,22 +104,26 @@ def get_nearby_subway_stations(center_lat, center_lng, radius_meters=10000):
         return []
 
 
-def generate_biased_origin():
+def generate_biased_origin(city_config):
     """
-    Generate origin with bias toward subway stations or Union Station proximity.
-    - 60% chance: Within 500m of a subway station
-    - 20% chance: Within 3km of Union Station
-    - 20% chance: Anywhere in 10km radius
+    Generate origin with bias toward transit stations or city center proximity.
+    - 60% chance: Within 500m of a subway/transit station
+    - 20% chance: Within 3km of city center
+    - 20% chance: Anywhere in city radius
     """
+    center = city_config['center']
+    radius_meters = city_config['radius_meters']
+    center_name = city_config['center_name']
+
     rand = random.random()
 
     if rand < 0.6:
-        # Try to get near subway station
+        # Try to get near transit station
         try:
             stations = get_nearby_subway_stations(
-                UNION_STATION['lat'],
-                UNION_STATION['lng'],
-                MAX_RADIUS_METERS
+                center['lat'],
+                center['lng'],
+                radius_meters
             )
 
             if stations:
@@ -114,28 +134,28 @@ def generate_biased_origin():
                     station['lng'],
                     500  # 500m radius around station
                 )
-                print(f"  → Generated origin near subway station: {station['name']}")
+                print(f"  → Generated origin near transit station: {station['name']}")
                 return origin_lat, origin_lng
         except Exception as e:
-            print(f"  → Subway station selection failed, falling back to random: {e}")
+            print(f"  → Transit station selection failed, falling back to random: {e}")
 
     if rand < 0.8:
-        # Within 3km of Union Station
+        # Within 3km of city center
         origin_lat, origin_lng = generate_random_point_in_radius(
-            UNION_STATION['lat'],
-            UNION_STATION['lng'],
+            center['lat'],
+            center['lng'],
             3000  # 3km radius
         )
-        print(f"  → Generated origin near Union Station (< 3km)")
+        print(f"  → Generated origin near {center_name} (< 3km)")
         return origin_lat, origin_lng
 
-    # Anywhere in 10km radius
+    # Anywhere in city radius
     origin_lat, origin_lng = generate_random_point_in_radius(
-        UNION_STATION['lat'],
-        UNION_STATION['lng'],
-        MAX_RADIUS_METERS
+        center['lat'],
+        center['lng'],
+        radius_meters
     )
-    print(f"  → Generated origin anywhere in 10km radius")
+    print(f"  → Generated origin anywhere in {city_config['radius_km']}km radius")
     return origin_lat, origin_lng
 
 
@@ -295,18 +315,38 @@ def get_address(lat, lng):
 @app.route('/random-destination', methods=['GET'])
 def random_destination():
     """
-    Pick random origin and destination within 10 km of Union Station
+    Pick random origin and destination within a city's radius
     and return ETAs for all travel modes.
     Only returns locations accessible by all four transport modes.
     Excludes routes that require ferry rides.
     Ensures walking time between origin and destination is at least 30 minutes.
+
+    Query parameters:
+    - city: City identifier (e.g., 'toronto', 'san-francisco'). Defaults to 'toronto'.
     """
+    from flask import request
+
+    # Get city from query parameter, default to Toronto
+    city_id = request.args.get('city', DEFAULT_CITY)
+
+    # Validate city
+    if city_id not in CITIES:
+        return jsonify({
+            'error': f'Invalid city: {city_id}. Available cities: {list(CITIES.keys())}'
+        }), 400
+
+    city_config = CITIES[city_id]
+    center = city_config['center']
+    radius_meters = city_config['radius_meters']
+
+    print(f"\n🌆 Generating game for {city_config['name']}")
+
     max_attempts = 30  # Try up to 30 times to find valid origin/destination pair
 
     for attempt in range(max_attempts):
         try:
-            # Generate biased origin (prefer subway stations or Union Station proximity)
-            origin_lat, origin_lng = generate_biased_origin()
+            # Generate biased origin (prefer transit stations or city center proximity)
+            origin_lat, origin_lng = generate_biased_origin(city_config)
 
             origin = {
                 'lat': origin_lat,
@@ -320,9 +360,9 @@ def random_destination():
 
             # Generate random destination
             dest_lat, dest_lng = generate_random_point_in_radius(
-                UNION_STATION['lat'],
-                UNION_STATION['lng'],
-                MAX_RADIUS_METERS
+                center['lat'],
+                center['lng'],
+                radius_meters
             )
 
             destination = {
@@ -395,6 +435,26 @@ def random_destination():
     }), 500
 
 
+@app.route('/cities', methods=['GET'])
+def get_cities():
+    """
+    Get list of available cities with their configurations.
+    """
+    cities_list = []
+    for city_id, config in CITIES.items():
+        cities_list.append({
+            'id': city_id,
+            'name': config['name'],
+            'center': config['center'],
+            'centerName': config['center_name'],
+            'radiusKm': config['radius_km']
+        })
+    return jsonify({
+        'cities': cities_list,
+        'default': DEFAULT_CITY
+    })
+
+
 @app.route('/maps-api-key', methods=['GET'])
 def maps_api_key():
     """
@@ -412,7 +472,9 @@ def index():
     return jsonify({
         'message': 'ETA Guesser API',
         'endpoints': {
-            '/random-destination': 'Get random destination and ETAs from Union Station'
+            '/random-destination': 'Get random destination and ETAs (supports ?city=toronto or ?city=san-francisco)',
+            '/cities': 'Get list of available cities',
+            '/maps-api-key': 'Get Google Maps API key for frontend'
         }
     })
 
@@ -421,8 +483,9 @@ if __name__ == '__main__':
     print("\n" + "="*80)
     print("🚀 ETA Guesser Backend Starting...")
     print("="*80)
-    print(f"📍 Origin: Union Station, Toronto ({UNION_STATION['lat']}, {UNION_STATION['lng']})")
-    print(f"📏 Max radius: {MAX_RADIUS_KM} km")
+    print(f"🌆 Available cities:")
+    for city_id, config in CITIES.items():
+        print(f"   • {config['name']}: {config['center_name']} ({config['radius_km']}km radius)")
     print(f"🎯 Only destinations with all 4 transport modes")
     print(f"⛴️  Ferry routes excluded")
     print(f"🌐 Server: http://localhost:5001")

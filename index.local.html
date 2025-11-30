@@ -131,6 +131,40 @@
             transition: transform 0.3s ease;
         }
 
+        #city-selector {
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        #city-selector label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        #city-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        #city-selector select:hover {
+            border-color: #1a73e8;
+        }
+
+        #city-selector select:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
         button {
             margin-top: 10px;
             padding: 12px 24px;
@@ -268,7 +302,16 @@
 <body>
     <div id="info">
         <div id="resize-handle"></div>
-        <h2>ETA Guesser - Toronto</h2>
+        <h2 id="game-title">ETA Guesser</h2>
+
+        <div id="city-selector">
+            <label for="city-select">Select City:</label>
+            <select id="city-select" onchange="onCityChange()">
+                <option value="toronto">Toronto</option>
+                <option value="san-francisco">San Francisco</option>
+            </select>
+        </div>
+
         <button id="randomBtn" onclick="getRandomDestination()">New Game</button>
         <button id="newGameBtn" onclick="startNewGame()">New Game</button>
 
@@ -321,7 +364,52 @@
         let trafficLayer;
         let transitLayer;
 
-        // Toronto Union Station coordinates (used for initial map center)
+        // City configurations (will be loaded from backend)
+        let selectedCity = 'toronto';
+        let cityConfigs = {
+            'toronto': {
+                name: 'Toronto',
+                center: { lat: 43.6452, lng: -79.3806 },
+                centerName: 'Union Station',
+                radiusKm: 10,
+                zoom: 12
+            },
+            'san-francisco': {
+                name: 'San Francisco',
+                center: { lat: 37.7749, lng: -122.4194 },
+                centerName: 'Downtown',
+                radiusKm: 10,
+                zoom: 12
+            }
+        };
+
+        // Get current city config
+        function getCurrentCityConfig() {
+            return cityConfigs[selectedCity];
+        }
+
+        // Handle city change
+        function onCityChange() {
+            const citySelect = document.getElementById('city-select');
+            selectedCity = citySelect.value;
+
+            // Update title
+            const cityConfig = getCurrentCityConfig();
+            document.getElementById('game-title').textContent = `ETA Guesser - ${cityConfig.name}`;
+
+            // Re-center map
+            if (map) {
+                map.setCenter(cityConfig.center);
+                map.setZoom(cityConfig.zoom);
+            }
+
+            // Reset game if one is active
+            if (gameActive) {
+                getRandomDestination();
+            }
+        }
+
+        // For backwards compatibility
         const UNION_STATION = { lat: 43.6452, lng: -79.3806 };
 
         // Panel resize functionality
@@ -428,12 +516,15 @@
         }
 
         function initMap() {
-            // Create map centered on Toronto
+            // Get current city config
+            const cityConfig = getCurrentCityConfig();
+
+            // Create map centered on selected city
             map = new google.maps.Map(document.getElementById('map'), {
-                center: UNION_STATION,
-                zoom: 12,
-                mapTypeControl: true,
-                streetViewControl: true,
+                center: cityConfig.center,
+                zoom: cityConfig.zoom,
+                mapTypeControl: false,
+                streetViewControl: false,
                 fullscreenControl: true
             });
 
@@ -444,6 +535,9 @@
             // Add transit layer
             transitLayer = new google.maps.TransitLayer();
             transitLayer.setMap(map);
+
+            // Update title
+            document.getElementById('game-title').textContent = `ETA Guesser - ${cityConfig.name}`;
 
             // Auto-pick origin and destination on load
             getRandomDestination();
@@ -538,8 +632,8 @@
             etaSection.style.display = 'block';
 
             try {
-                // Call backend (local development server)
-                const response = await fetch('http://localhost:5001/random-destination');
+                // Call backend (local development server) with selected city
+                const response = await fetch(`http://localhost:5001/random-destination?city=${selectedCity}`);
                 const data = await response.json();
 
                 if (data.error) {
