@@ -297,6 +297,138 @@
             color: #666;
             margin-top: 10px;
         }
+
+        /* Mobile toggle button */
+        #mobile-toggle {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1001;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        #mobile-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+
+            #info {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                max-width: 100%;
+                min-width: 100%;
+                height: 60vh;
+                max-height: 80vh;
+                z-index: 1000;
+                box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+                transform: translateY(calc(100% - 60px));
+                transition: transform 0.3s ease;
+                border-radius: 16px 16px 0 0;
+            }
+
+            #info.mobile-open {
+                transform: translateY(0);
+            }
+
+            #info::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: #ccc;
+                border-radius: 2px;
+                position: absolute;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            #resize-handle {
+                display: none;
+            }
+
+            #map {
+                flex: 1;
+                width: 100%;
+                height: 100vh;
+            }
+
+            #mobile-toggle {
+                display: block;
+            }
+
+            #mobile-toggle.hidden {
+                display: none;
+            }
+
+            /* Larger touch targets */
+            button {
+                padding: 14px 28px;
+                font-size: 16px;
+                min-height: 44px;
+            }
+
+            #city-selector select {
+                padding: 12px;
+                font-size: 16px;
+                min-height: 44px;
+            }
+
+            /* Better spacing on mobile */
+            #info {
+                padding: 24px 16px 16px;
+            }
+
+            h2 {
+                font-size: 20px;
+                margin-bottom: 12px;
+            }
+
+            h3 {
+                font-size: 16px;
+            }
+
+            .eta-row {
+                padding: 10px;
+            }
+
+            /* Score popup adjustments */
+            #score-popup {
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0);
+            }
+
+            #score-popup.show {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Tablet landscape */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            #info {
+                width: 380px;
+                min-width: 280px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -350,6 +482,8 @@
 
     <div id="map"></div>
 
+    <button id="mobile-toggle" onclick="toggleMobilePanel()">☰</button>
+
     <div id="score-popup">
         <p class="score-value" id="score-value">0</p>
         <p class="score-label">points</p>
@@ -367,6 +501,21 @@
         let mapClickListener = null;
         let trafficLayer;
         let transitLayer;
+
+        // Mobile panel state
+        function toggleMobilePanel() {
+            const infoPanel = document.getElementById('info');
+            const toggleBtn = document.getElementById('mobile-toggle');
+
+            infoPanel.classList.toggle('mobile-open');
+
+            // Change button icon
+            if (infoPanel.classList.contains('mobile-open')) {
+                toggleBtn.textContent = '×';
+            } else {
+                toggleBtn.textContent = '☰';
+            }
+        }
 
         // City configurations (will be loaded from backend)
         let selectedCity = 'toronto';
