@@ -343,11 +343,10 @@ def get_address(lat, lng):
 @app.route('/random-destination', methods=['GET'])
 def random_destination():
     """
-    Pick random origin and destination within a city's radius
-    and return ETAs for all travel modes.
-    Only returns locations accessible by all four transport modes.
+    Pick TWO random origins and one destination within a city's radius
+    and return ETAs for all travel modes from both origins.
+    Only returns locations accessible by driving, transit, and bicycling.
     Excludes routes that require ferry rides.
-    Ensures walking time between origin and destination is at least 30 minutes.
 
     Query parameters:
     - city: City identifier (e.g., 'toronto', 'san-francisco'). Defaults to 'toronto'.
@@ -369,21 +368,32 @@ def random_destination():
 
     print(f"\n🌆 Generating game for {city_config['name']}")
 
-    max_attempts = 30  # Try up to 30 times to find valid origin/destination pair
+    max_attempts = 30  # Try up to 30 times to find valid origins/destination
 
     for attempt in range(max_attempts):
         try:
-            # Generate biased origin (prefer transit stations or city center proximity)
-            origin_lat, origin_lng = generate_biased_origin(city_config)
-
-            origin = {
-                'lat': origin_lat,
-                'lng': origin_lng
+            # Generate first origin
+            origin1_lat, origin1_lng = generate_biased_origin(city_config)
+            origin1 = {
+                'lat': origin1_lat,
+                'lng': origin1_lng
             }
 
-            # Check if origin is on water - skip if it is
-            if is_on_water(origin):
-                print(f"✗ Attempt {attempt + 1}: Skipping - origin is on water")
+            # Check if origin1 is on water - skip if it is
+            if is_on_water(origin1):
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin1 is on water")
+                continue
+
+            # Generate second origin
+            origin2_lat, origin2_lng = generate_biased_origin(city_config)
+            origin2 = {
+                'lat': origin2_lat,
+                'lng': origin2_lng
+            }
+
+            # Check if origin2 is on water - skip if it is
+            if is_on_water(origin2):
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin2 is on water")
                 continue
 
             # Generate random destination
@@ -403,63 +413,66 @@ def random_destination():
                 print(f"✗ Attempt {attempt + 1}: Skipping - destination is on water")
                 continue
 
-            # Check if route requires ferry - skip if it does
-            if has_ferry_in_route(origin, destination):
-                print(f"✗ Attempt {attempt + 1}: Skipping - requires ferry")
+            # Check if routes require ferry - skip if any do
+            if has_ferry_in_route(origin1, destination):
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin1 requires ferry")
                 continue
 
-            # Get ETAs for all modes
-            etas = get_etas(origin, destination)
+            if has_ferry_in_route(origin2, destination):
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin2 requires ferry")
+                continue
 
-            # Check if all four modes are available (no errors)
-            required_modes = ['driving', 'transit', 'bicycling', 'walking']
-            all_modes_available = all(
-                mode in etas and 'error' not in etas[mode]
+            # Get ETAs for all modes from both origins
+            etas1 = get_etas(origin1, destination)
+            etas2 = get_etas(origin2, destination)
+
+            # Check if all three modes are available (no errors) for both origins
+            # Excluding walking as it's not displayed to the user
+            required_modes = ['driving', 'transit', 'bicycling']
+            all_modes_available_1 = all(
+                mode in etas1 and 'error' not in etas1[mode]
+                for mode in required_modes
+            )
+            all_modes_available_2 = all(
+                mode in etas2 and 'error' not in etas2[mode]
                 for mode in required_modes
             )
 
-            if not all_modes_available:
-                missing_modes = [m for m in required_modes if m not in etas or 'error' in etas[m]]
-                print(f"✗ Attempt {attempt + 1}: Skipping - missing modes: {missing_modes}")
+            if not all_modes_available_1:
+                missing_modes = [m for m in required_modes if m not in etas1 or 'error' in etas1[m]]
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin1 missing modes: {missing_modes}")
                 continue
 
-            # Check walking time is at least 30 minutes
-            walking_duration_text = etas['walking'].get('duration', '')
-            # Extract minutes from duration text (e.g., "32 mins" or "1 hour 5 mins")
-            walking_minutes = 0
-            if 'hour' in walking_duration_text:
-                hours = int(walking_duration_text.split()[0])
-                walking_minutes += hours * 60
-                if 'min' in walking_duration_text:
-                    mins = int(walking_duration_text.split()[-2])
-                    walking_minutes += mins
-            elif 'min' in walking_duration_text:
-                walking_minutes = int(walking_duration_text.split()[0])
-
-            if walking_minutes < 30:
-                print(f"✗ Attempt {attempt + 1}: Skipping - walking time only {walking_minutes} mins (need 30+)")
+            if not all_modes_available_2:
+                missing_modes = [m for m in required_modes if m not in etas2 or 'error' in etas2[m]]
+                print(f"✗ Attempt {attempt + 1}: Skipping - origin2 missing modes: {missing_modes}")
                 continue
 
             # Get human-readable addresses
-            origin_address = get_address(origin_lat, origin_lng)
+            origin1_address = get_address(origin1_lat, origin1_lng)
+            origin2_address = get_address(origin2_lat, origin2_lng)
             destination_address = get_address(dest_lat, dest_lng)
 
-            print(f"✓ Found valid origin/destination pair on attempt {attempt + 1} (walking: {walking_minutes} mins)")
+            print(f"✓ Found valid origins/destination on attempt {attempt + 1}")
+
             return jsonify({
-                'origin': origin,
-                'origin_address': origin_address,
+                'origin1': origin1,
+                'origin1_address': origin1_address,
+                'origin2': origin2,
+                'origin2_address': origin2_address,
                 'destination': destination,
                 'destination_address': destination_address,
-                'etas': etas
+                'etas1': etas1,
+                'etas2': etas2
             })
 
         except Exception as e:
             print(f"✗ Attempt {attempt + 1}: Error - {str(e)}")
             continue
 
-    # If we couldn't find a valid origin/destination pair after max_attempts
+    # If we couldn't find a valid origins/destination after max_attempts
     return jsonify({
-        'error': f'Could not find origin/destination pair with all transport modes and 30+ min walk after {max_attempts} attempts'
+        'error': f'Could not find valid origins/destination with all transport modes after {max_attempts} attempts'
     }), 500
 
 
