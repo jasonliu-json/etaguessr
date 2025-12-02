@@ -1067,7 +1067,6 @@
                             <th style="text-align: left; padding: 8px; font-weight: bold;">Mode</th>
                             <th style="text-align: center; padding: 8px; font-weight: bold;">From A</th>
                             <th style="text-align: center; padding: 8px; font-weight: bold;">From B</th>
-                            <th style="text-align: center; padding: 8px; font-weight: bold;">To Dest</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1082,61 +1081,9 @@
 
                 html += `
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; font-weight: 500;">${mode.name} ${mode.name.replace(/🚗|🚇|🚴/, '')}</td>
+                        <td style="padding: 10px; font-weight: 500;">${mode.name}</td>
                         <td style="text-align: center; padding: 10px; color: #1a73e8; font-weight: 600;">${time1}</td>
                         <td style="text-align: center; padding: 10px; color: #1a73e8; font-weight: 600;">${time2}</td>
-                        <td style="text-align: center; padding: 10px; color: #666; font-style: italic;">???</td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                    </tbody>
-                </table>
-            `;
-
-            etaContent.innerHTML = html;
-        }
-
-        function displayETAsTableWithDestination(etas1, etas2) {
-            if (!actualDestination) return;
-
-            const etaContent = document.getElementById('eta-content');
-
-            // Modes to display (excluding walking)
-            const modes = [
-                { key: 'driving', name: '🚗 Driving', icon: '🚗' },
-                { key: 'transit', name: '🚇 Transit', icon: '🚇' },
-                { key: 'bicycling', name: '🚴 Cycling', icon: '🚴' }
-            ];
-
-            // Build table HTML
-            let html = `
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid #ddd;">
-                            <th style="text-align: left; padding: 8px; font-weight: bold;">Mode</th>
-                            <th style="text-align: center; padding: 8px; font-weight: bold;">From A</th>
-                            <th style="text-align: center; padding: 8px; font-weight: bold;">From B</th>
-                            <th style="text-align: center; padding: 8px; font-weight: bold;">To Dest</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            modes.forEach(mode => {
-                const eta1 = etas1[mode.key];
-                const eta2 = etas2[mode.key];
-
-                const time1 = eta1 && !eta1.error ? eta1.duration : 'N/A';
-                const time2 = eta2 && !eta2.error ? eta2.duration : 'N/A';
-
-                html += `
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; font-weight: 500;">${mode.name} ${mode.name.replace(/🚗|🚇|🚴/, '')}</td>
-                        <td style="text-align: center; padding: 10px; color: #1a73e8; font-weight: 600;">${time1}</td>
-                        <td style="text-align: center; padding: 10px; color: #1a73e8; font-weight: 600;">${time2}</td>
-                        <td style="text-align: center; padding: 10px; color: #28a745; font-weight: 600;">${time1}</td>
                     </tr>
                 `;
             });
@@ -1235,9 +1182,6 @@
             // Update origin and destination text
             document.getElementById('origin').innerHTML = `<strong>A:</strong> ${actualOrigin1.address}<br><strong>B:</strong> ${actualOrigin2.address}`;
             document.getElementById('destination').textContent = actualDestination.address;
-
-            // Update ETA table to show actual destination times
-            displayETAsTableWithDestination(actualDestination.etas1, actualDestination.etas2);
 
             // Show results
             const resultDiv = document.getElementById('result');
